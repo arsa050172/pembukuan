@@ -47,7 +47,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("Aplikasi Pembukuan Sederhana")
-st.caption("Kelola data keuangan dengan tampilan modern dan interaktif.")
+st.caption("Transaksi uang masuk dan keluar.")
 
 # ----------------------------
 # 🧩 FUNGSI CRUD
@@ -111,26 +111,79 @@ menu = st.sidebar.radio(
 if menu == "📋 Lihat Data":
     st.subheader("📘 Laporan Pembukuan")
     data = read_data()
+
     if data:
         df = pd.DataFrame(data)
-        df["tanggal"] = pd.to_datetime(df["tanggal"]).dt.date
-        df.index = range(1, len(df) + 1)  # 🔢 Mulai nomor dari 1
-        st.dataframe(df, use_container_width=True)
 
-        # Total debet, kredit, saldo akhir
-        # Hitung total debet, kredit, dan saldo keseluruhan
-        df["saldo"] = df["debet"] - df["kredit"]
-  
+        # --- 1️⃣ Ubah tipe data tanggal ---
+        if "tanggal" in df.columns:
+            df["tanggal"] = pd.to_datetime(df["tanggal"]).dt.date
+
+        # --- 2️⃣ Hitung total sebelum rename ---
         total_debet = df["debet"].sum()
         total_kredit = df["kredit"].sum()
         saldo_akhir = df["total_saldo"].iloc[-1]
 
+        # --- 3️⃣ Format angka ke Rupiah sebelum rename ---
+        df["debet"] = df["debet"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+        df["kredit"] = df["kredit"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+        df["total_saldo"] = df["total_saldo"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+
+        # --- 4️⃣ Rename kolom agar tampil lebih rapi ---
+        df.rename(columns={
+            "id": "No Trans",
+            "created_at": "Tanggal Dibuat",
+            "tanggal": "Tanggal Transaksi",
+            "keterangan": "Deskripsi",
+            "debet": "Uang Masuk",
+            "kredit": "Uang Keluar",
+            "total_saldo": "Saldo Akhir"
+        }, inplace=True)
+       
+        # --- 5️⃣ Tampilkan tabel dan kolom nomor urut ---
+        # df.index = range(1, len(df) + 1)
+        # df.index.name = "Nomor"
+        # st.dataframe(df, use_container_width=True)
+                # --- 5️⃣ Tampilkan tabel ---
+        df.index = range(1, len(df) + 1)
+        df.index.name = "Nomor"
+
+        # --- 5️⃣ Tampilkan tabel ---
+        df.index = range(1, len(df) + 1)
+        df.index.name = "Nomor"
+
+        table_html = """
+        <table style="border-collapse: collapse; width: 100%; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
+        <thead>
+            <tr style="background-color: #f8f9fa;">
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Nomor</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">No Urut</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Tanggal Dibuat</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Tanggal Transaksi</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Deskripsi</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Uang Masuk</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Uang Keluar</th>
+            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Saldo Akhir</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>6</td><td>2025-10-24</td><td>2025-10-01</td><td>gaji oktober</td><td>Rp 7.500.000</td><td>Rp 0</td><td>Rp 7.500.000</td></tr>
+            <tr><td>2</td><td>12</td><td>2025-10-28</td><td>2025-10-24</td><td>bayar iuran</td><td>Rp 0</td><td>Rp 45.000</td><td>Rp 7.455.000</td></tr>
+            <tr><td>3</td><td>8</td><td>2025-10-24</td><td>2025-10-25</td><td>bayar kos</td><td>Rp 0</td><td>Rp 1.000.000</td><td>Rp 6.455.000</td></tr>
+        </tbody>
+        </table>
+        """
+
+        st.markdown(table_html, unsafe_allow_html=True)
+
+        # st.dataframe(df, use_container_width=True)
+
+        # --- 6️⃣ Tampilkan total di bawah tabel ---
         st.markdown("---")
         col1, col2, col3 = st.columns([2, 2, 2])
-        col1.metric("Total Debet", f"Rp {total_debet:,.2f}")
-        col2.metric("Total Kredit", f"Rp {total_kredit:,.2f}")
-        col3.metric("Saldo Akhir", f"Rp {saldo_akhir:,.2f}")
-
+        col1.metric("Total Uang Masuk", f"Rp {total_debet:,.0f}".replace(",", "."))
+        col2.metric("Total Uang Keluar", f"Rp {total_kredit:,.0f}".replace(",", "."))
+        col3.metric("Saldo Akhir", f"Rp {saldo_akhir:,.0f}".replace(",", "."))
     else:
         st.info("Belum ada data pembukuan.")
 
@@ -185,5 +238,3 @@ elif menu == "🗑️ Hapus Data":
             st.success(f"🗑️ Data '{selected['keterangan']}' berhasil dihapus.")
     else:
         st.info("Belum ada data untuk dihapus.")
-
-
