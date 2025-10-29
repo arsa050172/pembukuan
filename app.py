@@ -97,12 +97,16 @@ def update_data(record_id, tanggal, keterangan, debet, kredit, total_saldo):
 def delete_data(record_id):
     supabase.table("pembukuan").delete().eq("id", record_id).execute()
 
-# ----------------------------
-# 🧭 MENU NAVIGASI
-# ----------------------------
 menu = st.sidebar.radio(
     "Navigasi",
-    ["📋 Lihat Data", "➕ Tambah Data", "✏️ Edit Data", "🗑️ Hapus Data"]
+    [
+        "📋 Lihat Data",
+        "📆 Lihat Data Periodik",
+        "📅 Lihat Data Per-Tahun",
+        "➕ Tambah Data",
+        "✏️ Edit Data",
+        "🗑️ Hapus Data"
+    ]
 )
 
 # ----------------------------
@@ -129,6 +133,7 @@ if menu == "📋 Lihat Data":
         df["kredit"] = df["kredit"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
         df["total_saldo"] = df["total_saldo"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
 
+             
         # --- 4️⃣ Rename kolom agar tampil lebih rapi ---
         df.rename(columns={
             "id": "No Trans",
@@ -152,29 +157,11 @@ if menu == "📋 Lihat Data":
         df.index = range(1, len(df) + 1)
         df.index.name = "Nomor"
 
-        table_html = """
-        <table style="border-collapse: collapse; width: 100%; font-family: 'Segoe UI', sans-serif; font-size: 15px;">
-        <thead>
-            <tr style="background-color: #f8f9fa;">
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Nomor</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">No Urut</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Tanggal Dibuat</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Tanggal Transaksi</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Deskripsi</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Uang Masuk</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Uang Keluar</th>
-            <th style="color: #0078ff; border: 1px solid #ccc; padding: 10px;">Saldo Akhir</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td>1</td><td>6</td><td>2025-10-24</td><td>2025-10-01</td><td>gaji oktober</td><td>Rp 7.500.000</td><td>Rp 0</td><td>Rp 7.500.000</td></tr>
-            <tr><td>2</td><td>12</td><td>2025-10-28</td><td>2025-10-24</td><td>bayar iuran</td><td>Rp 0</td><td>Rp 45.000</td><td>Rp 7.455.000</td></tr>
-            <tr><td>3</td><td>8</td><td>2025-10-24</td><td>2025-10-25</td><td>bayar kos</td><td>Rp 0</td><td>Rp 1.000.000</td><td>Rp 6.455.000</td></tr>
-        </tbody>
-        </table>
-        """
+        # --- 5️⃣ Tampilkan tabel dari dataframe hasil supabase ---
+        df.index = range(1, len(df) + 1)
+        df.index.name = "Nomor"
 
-        st.markdown(table_html, unsafe_allow_html=True)
+        st.dataframe(df, use_container_width=True)
 
         # st.dataframe(df, use_container_width=True)
 
@@ -184,6 +171,148 @@ if menu == "📋 Lihat Data":
         col1.metric("Total Uang Masuk", f"Rp {total_debet:,.0f}".replace(",", "."))
         col2.metric("Total Uang Keluar", f"Rp {total_kredit:,.0f}".replace(",", "."))
         col3.metric("Saldo Akhir", f"Rp {saldo_akhir:,.0f}".replace(",", "."))
+    else:
+        st.info("Belum ada data pembukuan.")
+# -------------------------
+# LIHAT DATA PERIODIK
+# LIHAT DATA PERIODIK
+elif menu == "📆 Lihat Data Periodik":
+    st.subheader("📆 Laporan Data Periodik")
+    st.caption("Pilih rentang tanggal untuk menampilkan transaksi.")
+
+    start_date = st.date_input("Dari tanggal")
+    end_date = st.date_input("Sampai tanggal")
+
+    if st.button("🔍 Tampilkan Data"):
+        data = read_data()
+        if data:
+            df = pd.DataFrame(data)
+            df["tanggal"] = pd.to_datetime(df["tanggal"]).dt.date
+
+            filtered_df = df[(df["tanggal"] >= start_date) & (df["tanggal"] <= end_date)]
+
+            if not filtered_df.empty:
+                # Format kolom numerik ke Rupiah
+                filtered_df["debet"] = filtered_df["debet"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+                filtered_df["kredit"] = filtered_df["kredit"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+                filtered_df["total_saldo"] = filtered_df["total_saldo"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+
+                # Rename kolom agar sama seperti "Lihat Data"
+                filtered_df.rename(columns={
+                    "id": "No Trans",
+                    "created_at": "Tanggal Dibuat",
+                    "tanggal": "Tanggal Transaksi",
+                    "keterangan": "Deskripsi",
+                    "debet": "Uang Masuk",
+                    "kredit": "Uang Keluar",
+                    "total_saldo": "Saldo Akhir"
+                }, inplace=True)
+
+                # Tambahkan nomor urut
+                filtered_df.index = range(1, len(filtered_df) + 1)
+                filtered_df.index.name = "Nomor"
+
+                # Tampilkan tabel
+                st.dataframe(filtered_df, use_container_width=True)
+
+                # Dapatkan saldo akhir periode sebelumnya
+                saldo_akhir_sebelumnya = 0
+                # Filter data sebelum start_date untuk cari saldo akhir terakhir sebelum periode
+                prev_df = df[df["tanggal"] < start_date]
+                if not prev_df.empty:
+                    saldo_akhir_sebelumnya = prev_df["total_saldo"].iloc[-1]
+
+                # Tampilkan keterangan saldo akhir periode sebelumnya di bawah tabel
+                st.markdown(f"**SALDO AKHIR PERIODE SEBELUMNYA:** Rp {saldo_akhir_sebelumnya:,.0f}".replace(",", "."))
+
+                # Hitung total untuk periode yang dipilih (gunakan filtered_df asli tanpa format string)
+                total_debet = df[(df["tanggal"] >= start_date) & (df["tanggal"] <= end_date)]["debet"].sum()
+                total_kredit = df[(df["tanggal"] >= start_date) & (df["tanggal"] <= end_date)]["kredit"].sum()
+                saldo_akhir = df[(df["tanggal"] >= start_date) & (df["tanggal"] <= end_date)]["total_saldo"].iloc[-1]
+
+                # Tampilkan total di bawah keterangan saldo akhir periode sebelumnya
+                st.markdown("---")
+                col1, col2, col3 = st.columns([2, 2, 2])
+                col1.metric("Total Uang Masuk", f"Rp {total_debet:,.0f}".replace(",", "."))
+                col2.metric("Total Uang Keluar", f"Rp {total_kredit:,.0f}".replace(",", "."))
+                col3.metric("Saldo Akhir", f"Rp {saldo_akhir:,.0f}".replace(",", "."))
+            else:
+                st.warning("Tidak ada transaksi pada periode tersebut.")
+        else:
+            st.info("Belum ada data pembukuan.")
+
+#--------------------------
+# LIHAT DATA PER-TAHUN
+elif menu == "📅 Lihat Data Per-Tahun":
+    st.subheader("📅 Laporan Data Tahunan (Rekap per Bulan)")
+    st.caption("Pilih tahun untuk melihat total Debet, Kredit, dan Saldo Akhir per bulan.")
+
+    data = read_data()
+    if data:
+        df = pd.DataFrame(data)
+        df["tanggal"] = pd.to_datetime(df["tanggal"])
+        df["tahun"] = df["tanggal"].dt.year
+        df["bulan"] = df["tanggal"].dt.month
+
+        tahun_tersedia = sorted(df["tahun"].unique(), reverse=True)
+        selected_year = st.selectbox("Pilih Tahun", tahun_tersedia)
+
+        # Filter data berdasarkan tahun yang dipilih
+        filtered_df = df[df["tahun"] == selected_year]
+
+        if not filtered_df.empty:
+            # Rekap per bulan
+            monthly_summary = (
+                filtered_df.groupby("bulan")
+                .agg({
+                    "debet": "sum",
+                    "kredit": "sum"
+                })
+                .reset_index()
+                .sort_values("bulan")
+            )
+
+            # Hitung saldo akhir berjalan per bulan
+            monthly_summary["saldo_akhir"] = (monthly_summary["debet"] - monthly_summary["kredit"]).cumsum()
+
+            # Tambahkan nama bulan (dalam Bahasa Indonesia)
+            nama_bulan = {
+                1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+                5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+                9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+            }
+            monthly_summary["Deskripsi"] = monthly_summary["bulan"].map(nama_bulan)
+
+            # Format angka ke Rupiah
+            monthly_summary["debet"] = monthly_summary["debet"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+            monthly_summary["kredit"] = monthly_summary["kredit"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+            monthly_summary["saldo_akhir"] = monthly_summary["saldo_akhir"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+
+            # Rapikan kolom
+            monthly_summary = monthly_summary.rename(columns={
+                "debet": "Uang Masuk",
+                "kredit": "Uang Keluar",
+                "saldo_akhir": "Saldo Akhir"
+            })[["Deskripsi", "Uang Masuk", "Uang Keluar", "Saldo Akhir"]]
+
+            # Tampilkan tabel
+            monthly_summary.index = range(1, len(monthly_summary) + 1)
+            monthly_summary.index.name = "No"
+            st.dataframe(monthly_summary, use_container_width=True)
+
+            # Tampilkan total akhir
+            total_debet = filtered_df["debet"].sum()
+            total_kredit = filtered_df["kredit"].sum()
+            saldo_akhir = monthly_summary["Saldo Akhir"].iloc[-1]
+
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Uang Masuk", f"Rp {total_debet:,.0f}".replace(",", "."))
+            col2.metric("Total Uang Keluar", f"Rp {total_kredit:,.0f}".replace(",", "."))
+            col3.metric("Saldo Akhir Tahun", saldo_akhir)
+
+        else:
+            st.warning(f"Tidak ada transaksi di tahun {selected_year}.")
     else:
         st.info("Belum ada data pembukuan.")
 
